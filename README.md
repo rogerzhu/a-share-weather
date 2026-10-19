@@ -121,21 +121,6 @@ a-share-weather-skills/
 
 `weather.py` 里没有把美股、日经、韩股合成一行。三条各过各的日子。
 
-## 发到 GitHub
-
-在本目录单独建库，不要推进 `a-stock-data`。
-
-```bash
-git init
-git add .
-git commit -m "Publish the A-share weather skill."
-git branch -M main
-git remote add origin git@github.com:rogerzhu/a-share-weather.git
-git push -u origin HEAD
-```
-
-仓库地址：[github.com/rogerzhu/a-share-weather](https://github.com/rogerzhu/a-share-weather)。
-
 ## 许可
 
 [Apache License 2.0](./LICENSE)。
