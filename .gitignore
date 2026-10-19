@@ -1,0 +1,51 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Package distros
+dist/
+build/
+*.egg/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.SwiftTemp*
+*.sublime-project
+*.sublime-workspace
+
+# Test coverage
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python debugging
+.pytest_cache/
+.mypy_cache/
+
+# Local config (if any)
+config.local.json
+.secrets.env
