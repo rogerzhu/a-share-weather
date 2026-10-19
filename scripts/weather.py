@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -86,21 +87,40 @@ def pct_change(last, prev) -> float | None:
     return (last_n - prev_n) / prev_n * 100
 
 
+def shift_month(year: int, month: int, delta: int) -> tuple[int, int]:
+    month += delta
+    year += (month - 1) // 12
+    month = (month - 1) % 12 + 1
+    return year, month
+
+
 def trading_days(year: int, month: int) -> list[str]:
-    raw = fetch(f"{SZSE}?month={year}-{month:02d}").decode("utf-8")
-    data = json.loads(raw).get("data") or []
-    days = []
-    for row in data:
-        if str(row.get("jybz")) == "1" and row.get("jyrq"):
-            days.append(str(row["jyrq"])[:10])
-    return sorted(days)
+    """深交所月历。取失败就抛错，不能把整月当成没有开市日。"""
+    url = f"{SZSE}?month={year}-{month:02d}"
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            raw = fetch(url, referer="https://www.szse.cn/").decode("utf-8")
+            data = json.loads(raw).get("data") or []
+            if not data:
+                raise RuntimeError("日历为空")
+            days = [
+                str(row["jyrq"])[:10]
+                for row in data
+                if str(row.get("jybz")) == "1" and row.get("jyrq")
+            ]
+            if not days:
+                raise RuntimeError("没有开市日")
+            return sorted(days)
+        except Exception as exc:
+            last_error = exc
+            if attempt < 2:
+                time.sleep(1.5 * (attempt + 1))
+    raise RuntimeError(f"深交所 {year}-{month:02d} 日历没有取到：{last_error}")
 
 
 def month_days(year: int, month: int) -> list[str]:
-    if month == 0:
-        year, month = year - 1, 12
-    if month == 13:
-        year, month = year + 1, 1
+    year, month = shift_month(year, month, 0)
     try:
         return trading_days(year, month)
     except Exception:
@@ -110,18 +130,28 @@ def month_days(year: int, month: int) -> list[str]:
 def next_session(today: datetime) -> tuple[str, str]:
     """今天仍是交易日且未收盘，目标就是今天；否则取下一个开市日。"""
     y, m = today.year, today.month
-    opens = set(month_days(y, m) + month_days(y, m + 1) + month_days(y, m - 1))
+    opens = set(trading_days(y, m))
+    ny, nm = shift_month(y, m, 1)
+    opens.update(trading_days(ny, nm))
     day = today.date().isoformat()
     if day in opens and (today.hour, today.minute) < (9, 30):
-        return day, "今天尚未开盘"
-    if day in opens and (today.hour, today.minute) < (15, 0):
-        return day, "今天已开盘，外面的市场按各自是否在交易取值"
-    cursor = today.date() + timedelta(days=1)
-    for _ in range(16):
-        if cursor.isoformat() in opens:
-            return cursor.isoformat(), "下一开市日的盘前"
-        cursor += timedelta(days=1)
-    raise RuntimeError("深交所日历里找不到下一个开市日")
+        session, note = day, "今天尚未开盘"
+    elif day in opens and (today.hour, today.minute) < (15, 0):
+        session, note = day, "今天已开盘，外面的市场按各自是否在交易取值"
+    else:
+        session, note = "", ""
+        cursor = today.date() + timedelta(days=1)
+        for _ in range(16):
+            if cursor.isoformat() in opens:
+                session, note = cursor.isoformat(), "下一开市日的盘前"
+                break
+            cursor += timedelta(days=1)
+        if not session:
+            raise RuntimeError("深交所日历里找不到下一个开市日")
+    gap = (datetime.strptime(session, "%Y-%m-%d").date() - today.date()).days
+    if gap > 10:
+        raise RuntimeError(f"下一个开市日 {session} 距离今天超过 10 天，深交所日历可能没取全")
+    return session, note
 
 
 def us_session_date(stamp: str) -> str | None:
