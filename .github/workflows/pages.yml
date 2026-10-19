@@ -1,0 +1,40 @@
+name: 开盘晴雨表
+
+on:
+  schedule:
+    # 北京时间 09:00。GitHub 定时器使用 UTC，而且高峰时会晚到。
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 取数并生成网页
+        run: |
+          python3 scripts/weather.py --json > "$RUNNER_TEMP/weather.json"
+          python3 scripts/build_page.py "$RUNNER_TEMP/weather.json" site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 发布到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

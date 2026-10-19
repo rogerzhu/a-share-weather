@@ -105,6 +105,14 @@ cp -R . ~/.claude/skills/a-share-weather
 **断网能跑吗？**  
 不能。标准库只省了安装，没省网线。
 
+## 每天早上的网页
+
+北京时间 9:00 左右，GitHub Actions 跑一次 `scripts/weather.py`，把结果写成一页静态网页。页头盖着「仅供娱乐」。满足率仍是清单占比，不是上涨概率。
+
+定时器按 UTC 的 01:00 触发，高峰时会晚几分钟甚至更久。周末也会跑，脚本自己跳到下一个开市日。仓库连续 60 天没有动静时，GitHub 会停掉定时任务，手动跑一次就能重新打开。
+
+网页地址：[rogerzhu.github.io/a-share-weather](https://rogerzhu.github.io/a-share-weather/)。第一次要在仓库 Settings → Pages 里把 Source 选成 GitHub Actions。
+
 ## 目录
 
 ```text
@@ -113,10 +121,12 @@ a-share-weather-skills/
 ├── README.md
 ├── LICENSE
 ├── .gitignore
+├── .github/workflows/pages.yml
 ├── docs/
 │   └── v2.0-changes.md
 └── scripts/
-    └── weather.py
+    ├── weather.py
+    └── build_page.py
 ```
 
 `weather.py` 里没有把美股、日经、韩股合成一行。三条各过各的日子。
